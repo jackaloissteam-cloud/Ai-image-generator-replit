@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Image Generator</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0f0f13;
+        color: #e2e2e8;
+        min-height: 100vh;
+        padding: 24px 16px;
+      }
+      .container {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .subtitle {
+        color: #888;
+        font-size: 0.9rem;
+        margin-bottom: 24px;
+      }
+      .card {
+        background: #1a1a24;
+        border: 1px solid #2a2a38;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #bbb;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 10px 12px;
+        background: #0f0f18;
+        border: 1px solid #2a2a3a;
+        border-radius: 8px;
+        color: #e2e2e8;
+        font-size: 0.95rem;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      input:focus,
+      textarea:focus {
+        border-color: #7c6af7;
+      }
+      .token-wrap {
+        position: relative;
+      }
+      .token-wrap input {
+        padding-right: 40px;
+        font-family: monospace;
+      }
+      .toggle-btn {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #888;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      textarea {
+        min-height: 100px;
+        resize: vertical;
+        margin-bottom: 4px;
+      }
+      .hint {
+        font-size: 0.78rem;
+        color: #666;
+        margin-top: 4px;
+      }
+      .hint a {
+        color: #7c6af7;
+      }
+      button.generate {
+        width: 100%;
+        padding: 12px;
+        background: #7c6af7;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 12px;
+        transition: background 0.2s;
+      }
+      button.generate:hover:not(:disabled) {
+        background: #6a5ae0;
+      }
+      button.generate:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .error {
+        background: #2a1018;
+        border: 1px solid #7a2030;
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: #f87171;
+        font-size: 0.9rem;
+        margin-top: 12px;
+      }
+      .img-wrap {
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .img-wrap img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .img-caption {
+        font-size: 0.82rem;
+        color: #666;
+        font-style: italic;
+        padding: 10px 0 0;
+      }
+      button.download {
+        margin-top: 12px;
+        padding: 8px 16px;
+        background: #1e2030;
+        border: 1px solid #2a2a3a;
+        color: #bbb;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      button.download:hover {
+        background: #2a2a3a;
+      }
+      .spinner {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        border: 2px solid #fff3;
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        vertical-align: middle;
+        margin-right: 8px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>✨ AI Image Generator</h1>
+      <p class="subtitle">Powered by Stable Diffusion 1.5 via HuggingFace</p>
+
+      <div class="card">
+        <label for="token">HuggingFace API Token</label>
+        <div class="token-wrap">
+          <input
+            id="token"
+            type="password"
+            placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="off"
+          />
+          <button
+            class="toggle-btn"
+            onclick="toggleToken()"
+            title="Show/hide token"
+          >
+            👁
+          </button>
+        </div>
+        <p class="hint">
+          Get your free token at
+          <a href="https://huggingface.co/settings/tokens" target="_blank"
+            >huggingface.co/settings/tokens</a
+          >. Stored locally in your browser only.
+        </p>
+
+        <br />
+        <label for="prompt">Prompt</label>
+        <textarea
+          id="prompt"
+          placeholder="Describe the image you want to generate…"
+        >
+two red roses, blue background, highly detailed, sharp focus, cinematic lighting</textarea
+        >
+
+        <button class="generate" id="genBtn" onclick="generate()">
+          ✨ Generate Image
+        </button>
+        <div id="error" class="error" style="display: none"></div>
+      </div>
+
+      <div class="card" id="result" style="display: none">
+        <div class="img-wrap">
+          <img id="resultImg" src="" alt="Generated image" />
+        </div>
+        <p class="img-caption" id="resultCaption"></p>
+        <button class="download" onclick="downloadImage()">⬇ Download</button>
+      </div>
+    </div>
+
+    <script>
+      const TOKEN_KEY = "hf_api_token";
+      const API_URL =
+        "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5";
+
+      window.onload = () => {
+        const stored = localStorage.getItem(TOKEN_KEY);
+        if (stored) document.getElementById("token").value = stored;
+      };
+
+      function toggleToken() {
+        const inp = document.getElementById("token");
+        inp.type = inp.type === "password" ? "text" : "password";
+      }
+
+      async function generate() {
+        const token = document.getElementById("token").value.trim();
+        const prompt = document.getElementById("prompt").value.trim();
+        const errDiv = document.getElementById("error");
+        const btn = document.getElementById("genBtn");
+        const result = document.getElementById("result");
+
+        errDiv.style.display = "none";
+        result.style.display = "none";
+
+        if (!token) {
+          showError("Please enter your HuggingFace API token.");
+          return;
+        }
+        if (!prompt) {
+          showError("Please enter a prompt.");
+          return;
+        }
+
+        localStorage.setItem(TOKEN_KEY, token);
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>Generating… (20–60 sec)';
+
+        try {
+          const res = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + token,
+              "Content-Type": "application/json",
+              Accept: "image/png",
+            },
+            body: JSON.stringify({ inputs: prompt }),
+          });
+
+          if (!res.ok) {
+            const text = await res.text();
+            if (res.status === 401)
+              throw new Error(
+                "Invalid API token. Check your HuggingFace token.",
+              );
+            if (res.status === 503)
+              throw new Error(
+                "Model is still loading. Wait 20–30 seconds and try again.",
+              );
+            throw new Error(
+              "API error " + res.status + ": " + text.substring(0, 200),
+            );
+          }
+
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          document.getElementById("resultImg").src = url;
+          document.getElementById("resultCaption").textContent =
+            '"' + prompt + '"';
+          result.style.display = "block";
+        } catch (e) {
+          showError(e.message || "Generation failed. Please try again.");
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = "✨ Generate Image";
+        }
+      }
+
+      function showError(msg) {
+        const errDiv = document.getElementById("error");
+        errDiv.textContent = "⚠ " + msg;
+        errDiv.style.display = "block";
+      }
+
+      function downloadImage() {
+        const img = document.getElementById("resultImg");
+        const a = document.createElement("a");
+        a.href = img.src;
+        a.download = "generated-image.png";
+        a.click();
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") generate();
+      });
+    </script>
+  </body>
+</html>
